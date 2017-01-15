@@ -15,6 +15,8 @@ int VW_MESSAGE_LEN = 9;
 
 void setup()
 {
+    pinMode(13, OUTPUT);
+    digitalWrite(13, LOW);
     Serial.begin(9600);	// Debugging only
     Serial.println("setup");
     // Initialise the IO and ISR
@@ -39,7 +41,10 @@ void loop()
 	      // Message with a good checksum received, dump it.
 	      Serial.print("Got: ");
 	      Serial.println((char *) buf);
-        digitalWrite(13, false);
+        digitalWrite(13, HIGH);
+        delay(10000);
+
+        
       }
     }
 }

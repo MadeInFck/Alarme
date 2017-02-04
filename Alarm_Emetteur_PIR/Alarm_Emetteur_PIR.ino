@@ -1,4 +1,3 @@
-
 //============================================================================
 //  Détecteur de mouvements à infrarouge avec transmission RF
 //  Allume une LED si détection
@@ -10,8 +9,7 @@
 //  PIR sensor tester by MadeInFck
 // ===========================================================================
 
-
-#include <VirtualWire.h>
+#include <RCSwitch.h>
 #include <avr/interrupt.h>        // Library to use interrupt
 #include <avr/sleep.h>            // Library for putting our arduino into sleep modes
 
@@ -25,6 +23,8 @@ bool sending = false;
 int val = 0;           // Lecture deu statut
 long previousMillis = 0;
 
+RCSwitch mySwitch = RCSwitch();
+
 void wakeUpNow(){                  // Interrupt service routine or ISR  
   PIRsensorState = !lastPIRsensorState;    // we negate previous state and assign to current state
 }
@@ -34,19 +34,17 @@ void setup() {
   Serial.begin(9600);     // initialize serial communication only for debugging purpose
   Serial.println("Warming up... wait for a min...");
 
- // delay execution of sketch for a min, to allow PIR sensor get stabilized
- for( int i = 1; i <= 120; i++){  // LED at pin 13 blinks until PIR sensor is stabilized
+  // delay execution of sketch for a min, to allow PIR sensor get stabilized
+  for( int i = 1; i <= 120; i++){  // LED at pin 13 blinks until PIR sensor is stabilized
     digitalWrite(LedPin, HIGH); 
     delay(100);         
     digitalWrite(LedPin, LOW); 
     delay(100); 
-
-   vw_set_ptt_inverted(true);   // Initialisation de l'émetteur RF
-   vw_setup(2000);
  }
  
+  mySwitch.enableTransmit(6);
+    
   Serial.println("Ready");     // enable only for debugging purpose
-  
   pinMode(2, INPUT);        // define interrupt pin D2 as input to read interrupt received by PIR sensor
 }
 
@@ -103,8 +101,7 @@ void loop() {
   }
 
   if (PIRsensorState == 1 && sending == false) {
-    vw_send((uint8_t*)msg, strlen(msg));
-    vw_wait_tx();
+    mySwitch.send(1234,24);
     Serial.println("Envoi du message d'intrusion");
     sending = true;
   }

@@ -1,4 +1,3 @@
-
 //============================================================================
 //  Récepteur de messages via RF433MHz
 //  Allume une LED si réception du bon message
@@ -14,22 +13,30 @@
 #include <ESP8266WiFi.h>
 #include "keys.h"
 #include <FirebaseArduino.h>
-
+#include <WiFiUdp.h>
+#include <NTPClient.h>
+#include <Time.h>
+#include <TimeLib.h>
 
 int VW_MESSAGE_LEN = 4;
 bool intrusion = false;
-
+String device = "I000";
 RCSwitch mySwitch = RCSwitch();
 WiFiClient client;
+WiFiUDP ntpUDP;
+int16_t utc = +2;
+tmElements_t tm;
+NTPClient timeClient(ntpUDP, timeServer, utc*3600, 60000);
+
 void sendNotificationToFirebase(); 
-void sendDataToFirebase();
+void sendDataToFirebase(String);
 
 
 void setup() { 
     Serial.begin(9600);	// Debugging only
     Serial.println("Setup");
     pinMode(D5,OUTPUT);
-    
+    digitalWrite(D5,LOW);
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid, password);
     Serial.print("Attempting to connect to WPA SSID: ");
@@ -46,10 +53,15 @@ void setup() {
      delay(1000);
     Serial.print("connecting to ");
     Serial.println(host);
-  
+
+    timeClient.begin();
+    timeClient.update();
+ 
     if (!client.connect(host, 80)) {
-    Serial.println("connection failed");
-    return;
+      Serial.println("Connection failed");
+      return;
+    } else {
+      Serial.println("Connection succeeded !");
     }
     
     Firebase.begin(FIREBASE_HOST, FIREBASE_AUTH); 
@@ -61,6 +73,7 @@ void setup() {
 
 void loop()
 {
+    timeClient.update();
     if (mySwitch.available()) {
       int value = mySwitch.getReceivedValue();
       Serial.println("");
@@ -68,6 +81,7 @@ void loop()
       if (value == 0) {
         Serial.println("Unknown encoding");
       } else if (value == 1234) {
+	      device = "I001";
 	      Serial.print("Got: ");
 	      Serial.println("Sensor #1 detected motion!");
         digitalWrite(D5, HIGH);
@@ -81,7 +95,7 @@ void loop()
       WiFiClient client;
       client.connect(host, 80);
       sendNotificationToFirebase();
-      sendDataToFirebase();
+      sendDataToFirebase(device);
       intrusion = false;
     }
     
@@ -95,7 +109,7 @@ void loop()
       //Serial.print(".");
       //Serial.println("disconnecting.");
       client.flush();
-      //client.stop();
+      client.stop();
     }
 }
 
@@ -127,16 +141,27 @@ void sendNotificationToFirebase() {
     delay(100);
 }
 
-void sendDataToFirebase() {
-  char data[] = "{ \"date\" : \"03/02/2017\", \"heure\" : \"23:49\", \"device\": \"I001\" }";
-  StaticJsonBuffer<300> JSONBuffer;   //Memory pool   
-  JsonObject& parsed= JSONBuffer.parseObject(data); //Parse message
-  int value = parsed["date"];
-  Serial.println(value);
-  Firebase.pushString("intrusions",data);
+void sendDataToFirebase(String device) {
+  StaticJsonBuffer<200> JSONBuffer;   //Memory pool   
+  JsonObject& parsed= JSONBuffer.createObject(); //Parse message
+  
+  unsigned long epoch = timeClient.getEpochTime();
+  time_t utcCalc = epoch ;
+  String dateData = "";
+  if (month(utcCalc < 10)) {
+    dateData = String(day(utcCalc)) + "/0" + String(month(utcCalc)) + "/" + String(year(utcCalc));
+  } else {
+    dateData = String(day(utcCalc)) + "/" + String(month(utcCalc)) + "/" + String(year(utcCalc));
+  }
+  parsed["date"] = dateData;
+  parsed["time"] = timeClient.getFormattedTime();
+  parsed["device"] = device;
+  Firebase.push("/intrusions",parsed);
   if (Firebase.failed()) {
-    Serial.print("setting /truth failed:");
+    Serial.print("Data send failed:");
     Serial.println(Firebase.error());
+  } else {
+    Serial.println("Intrusion data send to Firebase !");
   }
 }
 

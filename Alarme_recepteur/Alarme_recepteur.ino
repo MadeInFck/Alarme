@@ -88,8 +88,16 @@ void loop()
         delay(5000);
         digitalWrite(D5,LOW);
         intrusion = true;
-      }
+      } 
       mySwitch.resetAvailable();
+    } else if (value == 4321) {
+        device = "I002";
+        Serial.print("Got: ");
+        Serial.println("Sensor #2 detected motion!");
+        digitalWrite(D5, HIGH);
+        delay(5000);
+        digitalWrite(D5,LOW);
+        intrusion = true;
     }
     if (intrusion) {
       WiFiClient client;

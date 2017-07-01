@@ -15,10 +15,9 @@
 
 const int PIRsensorInterrupt = 0; //interrupt 0 at arduino nano pin D2
 const int LedPin = 13;            // external LED or relay connected to pin 13
-   
+const int voltageOut = 4;  
 volatile int lastPIRsensorState = 1;  // previous sensor state
 volatile int PIRsensorState = 0;   // current state of the button
-const char *msg="I001";
 bool sending = false;
 int val = 0;           // Lecture deu statut
 long previousMillis = 0;
@@ -30,6 +29,8 @@ void wakeUpNow(){                  // Interrupt service routine or ISR
 }
 
 void setup() {
+  pinMode(voltageOut, OUTPUT);
+  digitalWrite(voltageOut, HIGH);
   pinMode(LedPin, OUTPUT);    // initialize pin 13 as an output pin for LED or relay etc.
   Serial.begin(9600);     // initialize serial communication only for debugging purpose
   Serial.println("Warming up... wait for a min...");
@@ -84,7 +85,8 @@ void Hibernate()         // here arduino is put to sleep/hibernation
 
 
 void loop() {
- interrupts();    // enable interrupts for Due and Nano V3
+  digitalWrite(voltageOut, HIGH);
+  interrupts();    // enable interrupts for Due and Nano V3
 
  if (PIRsensorState != lastPIRsensorState){
 
@@ -101,7 +103,7 @@ void loop() {
   }
 
   if (PIRsensorState == 1 && sending == false) {
-    mySwitch.send(1234,24);
+    mySwitch.send(4321,24);
     Serial.println("Envoi du message d'intrusion");
     sending = true;
   }
